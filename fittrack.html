@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FitTrack">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0d0d">
+<title>FitTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0d0d; --surface: #111111; --surface2: #161616; --surface3: #1e1e1e;
+    --border: #1e1e1e; --border2: #2a2a2a;
+    --text: #f0f0f0; --text2: #aaa; --text3: #666; --text4: #444;
+    --green: #4ade80; --orange: #fb923c; --purple: #818cf8;
+    --red: #f87171; --yellow: #fbbf24;
+    --font-head: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-body); overflow: hidden; }
+  button { font-family: var(--font-body); -webkit-tap-highlight-color: transparent; cursor: pointer; }
+  input { font-family: var(--font-body); color-scheme: dark; }
+  input[type=number] { -moz-appearance: textfield; }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  /* Layout */
+  #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+  #header {
+    padding: calc(var(--safe-top) + 14px) 16px 12px;
+    background: rgba(13,13,13,0.97); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 50;
+    display: flex; justify-content: space-between; align-items: flex-end;
+  }
+  #header h1 { font-family: var(--font-head); font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  #header h1 span { color: var(--green); }
+  #header .date-label { font-size: 11px; color: var(--text3); }
+
+  #tabnav {
+    display: flex; background: var(--bg); border-bottom: 1px solid var(--border);
+    flex-shrink: 0; z-index: 49;
+  }
+  .tab-btn {
+    flex: 1; padding: 8px 4px 6px; background: none; border: none;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 10px; font-weight: 600; color: var(--text3);
+    border-bottom: 2px solid transparent; transition: all 0.15s;
+  }
+  .tab-btn.active { color: var(--green); border-bottom-color: var(--green); }
+  .tab-btn .icon { font-size: 18px; }
+
+  #content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .page { display: none; padding: 16px 16px calc(var(--safe-bot) + 24px); flex-direction: column; gap: 14px; }
+  .page.active { display: flex; }
+
+  /* Cards */
+  .card { background: var(--surface); border-radius: 16px; padding: 16px; border: 1px solid var(--border); }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+
+  /* Grid stats */
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 10px; }
+  .stat-card .lbl { font-size: 10px; color: var(--text3); margin-bottom: 6px; }
+  .stat-card .val { font-family: var(--font-head); font-size: 24px; font-weight: 800; line-height: 1; }
+  .stat-card .unit { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .stat-card .diff { font-size: 10px; margin-top: 4px; }
+
+  /* Primary buttons */
+  .btn { border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 700; width: 100%; transition: opacity 0.15s; }
+  .btn:active { opacity: 0.8; }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-orange { background: var(--orange); color: #000; }
+  .btn-purple { background: var(--purple); color: #000; }
+
+  /* Inputs */
+  .input-group { margin-bottom: 12px; }
+  .input-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .inp-wrap { display: flex; align-items: center; gap: 8px; }
+  .inp {
+    flex: 1; background: #1a1a1a; border: 1px solid var(--border2); border-radius: 10px;
+    color: var(--text); padding: 10px 12px; font-size: 15px; outline: none;
+    -webkit-appearance: none; width: 100%;
+  }
+  .inp-unit { font-size: 13px; color: var(--text3); flex-shrink: 0; }
+  .inp3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+
+  /* Modal */
+  #modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
+    display: none; align-items: flex-end; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  #modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px;
+    max-height: 88vh; overflow-y: auto; padding: 20px 16px calc(var(--safe-bot) + 24px);
+    border: 1px solid var(--border);
+  }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-title { font-family: var(--font-head); font-size: 18px; font-weight: 700; }
+  .modal-close { background: var(--surface3); border: none; color: var(--text2); border-radius: 20px; width: 32px; height: 32px; font-size: 16px; }
+
+  /* Chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .chip { padding: 5px 11px; border-radius: 20px; font-size: 12px; font-weight: 500; border: none; transition: all 0.12s; }
+  .chip.green { background: #1a1a1a; color: #888; }
+  .chip.green.on { background: var(--green); color: #000; }
+  .chip.purple { background: #1a1a1a; color: #888; }
+  .chip.purple.on { background: var(--purple); color: #000; }
+
+  /* Progress bar */
+  .prog-bar { background: var(--surface3); border-radius: 4px; height: 6px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+
+  /* Ring SVG */
+  .ring-wrap { position: relative; flex-shrink: 0; }
+  .ring-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+
+  /* Row items */
+  .list-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid #1a1a1a;
+  }
+  .list-row:last-child { border-bottom: none; }
+  .rm-btn { background: none; border: none; color: var(--text4); font-size: 18px; padding: 4px 8px; }
+
+  /* Week strip */
+  .week-strip { display: flex; gap: 6px; }
+  .week-day { flex: 1; text-align: center; }
+  .week-day .day-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+  .week-day .day-dot { height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+
+  /* Food preset grid */
+  .preset-grid { display: flex; flex-wrap: wrap; gap: 6px; max-height: 180px; overflow-y: auto; margin-bottom: 14px; }
+  .preset-btn {
+    background: #1a1a1a; border: 1px solid var(--border2); border-radius: 8px;
+    color: var(--text2); padding: 6px 10px; font-size: 12px;
+  }
+  .preset-btn span { color: var(--orange); }
+
+  /* Workout log item */
+  .wk-item { background: var(--surface2); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); }
+  .wk-tag { font-size: 10px; background: rgba(129,140,248,.15); color: var(--purple); border-radius: 6px; padding: 2px 6px; }
+
+  /* Sparkline area */
+  .chart-area { margin: 4px 0; }
+  .day-labels { display: flex; justify-content: space-between; margin-top: 4px; }
+  .day-labels span { font-size: 10px; color: var(--text4); }
+
+  /* Install banner */
+  #install-banner {
+    display: none; position: fixed; bottom: calc(var(--safe-bot) + 70px); left: 12px; right: 12px;
+    background: #1a1a2e; border: 1px solid #2a2a4e; border-radius: 14px;
+    padding: 12px 14px; z-index: 100; flex-direction: column; gap: 8px;
+  }
+  #install-banner.show { display: flex; }
+  .banner-text { font-size: 13px; color: var(--text2); line-height: 1.4; }
+  .banner-row { display: flex; gap: 8px; align-items: center; }
+  .banner-close { background: none; border: none; color: var(--text3); font-size: 18px; padding: 0 4px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Header -->
+  <div id="header">
+    <div>
+      <div id="header-date" class="date-label"></div>
+      <h1>FIT<span>TRACK</span></h1>
+    </div>
+    <div id="streak-badge" style="font-size:12px;color:var(--text3);text-align:right;"></div>
+  </div>
+
+  <!-- Tab Nav -->
+  <div id="tabnav">
+    <button class="tab-btn active" data-tab="dashboard"><span class="icon">⚡</span>ダッシュ</button>
+    <button class="tab-btn" data-tab="weight"><span class="icon">⚖️</span>体重</button>
+    <button class="tab-btn" data-tab="food"><span class="icon">🍽</span>食事</button>
+    <button class="tab-btn" data-tab="workout"><span class="icon">💪</span>筋トレ</button>
+  </div>
+
+  <!-- Content -->
+  <div id="content">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="page active" id="page-dashboard">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="lbl">体重</div>
+          <div class="val" id="d-weight" style="color:var(--green)">--</div>
+          <div class="unit">kg</div>
+          <div class="diff" id="d-weight-diff"></div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">カロリー</div>
+          <div class="val" id="d-kcal" style="color:var(--orange)">0</div>
+          <div class="unit">kcal 今日</div>
+        </div>
+        <div class="stat-card">
+          <div class="lbl">今週</div>
+          <div class="val" id="d-week-work" style="color:var(--purple)">0</div>
+          <div class="unit">日 運動</div>
+        </div>
+      </div>
+
+      <!-- Kcal ring -->
+      <div class="card" style="display:flex;align-items:center;gap:16px;">
+        <div class="ring-wrap">
+          <svg id="ring-svg" width="80" height="80" style="transform:rotate(-90deg)">
+            <circle cx="40" cy="40" r="33" fill="none" stroke="var(--surface3)" stroke-width="7"/>
+            <circle id="ring-fill" cx="40" cy="40" r="33" fill="none" stroke="var(--orange)" stroke-width="7"
+              stroke-dasharray="0 207.3" stroke-linecap="round" style="transition:stroke-dasharray .6s ease"/>
+          </svg>
+          <div class="ring-center">
+            <span id="ring-pct" style="font-family:var(--font-head);font-size:13px;font-weight:800;color:var(--orange)">0%</span>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px">本日のカロリー</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">
+            <span id="d-kcal2">0</span> / <span id="d-goal">2000</span> kcal
+          </div>
+          <div class="prog-bar"><div id="d-prog" class="prog-fill" style="background:var(--orange);width:0%"></div></div>
+          <div id="d-kcal-msg" style="font-size:11px;color:var(--green);margin-top:6px">記録を始めましょう</div>
+        </div>
+      </div>
+
+      <!-- Weight chart -->
+      <div class="card">
+        <div class="card-title">体重の推移（7日間）</div>
+        <div class="chart-area">
+          <svg id="weight-chart" width="100%" viewBox="0 0 280 56" style="overflow:visible"></svg>
+        </div>
+        <div class="day-labels" id="weight-day-labels"></div>
+      </div>
+
+      <!-- Kcal chart -->
+      <div class="card">
+        <div class="card-title">カロリー推移（7日間）</div>
+        <div class="chart-area">
+          <svg id="kcal-chart" width="100%" viewBox="0 0 280 56" style="overflow:visible"></svg>
+        </div>
+        <div class="day-labels" id="kcal-day-labels"></div>
+      </div>
+
+      <!-- Today summary -->
+      <div class="card" id="d-summary" style="display:none">
+        <div class="card-title">今日のまとめ</div>
+        <div id="d-summary-body"></div>
+      </div>
+    </div>
+
+    <!-- ── WEIGHT ── -->
+    <div class="page" id="page-weight">
+      <div class="card" style="text-align:center;padding:24px 16px">
+        <div style="font-size:13px;color:var(--text3);margin-bottom:8px">現在の体重</div>
+        <div style="display:flex;align-items:baseline;justify-content:center;gap:6px">
+          <span id="w-current" style="font-family:var(--font-head);font-size:60px;font-weight:800;color:var(--green);line-height:1">--</span>
+          <span style="font-size:18px;color:var(--text3)">kg</span>
+        </div>
+        <div id="w-diff" style="font-size:14px;margin-top:8px;min-height:20px"></div>
+        <button class="btn btn-green" style="margin-top:16px" onclick="openModal('weight-modal')">＋ 今日の体重を記録</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">推移グラフ</div>
+        <svg id="weight-chart2" width="100%" viewBox="0 0 280 64" style="overflow:visible"></svg>
+        <div class="day-labels" id="weight-day-labels2"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">記録履歴</div>
+        <div id="weight-history"></div>
+      </div>
+    </div>
+
+    <!-- ── FOOD ── -->
+    <div class="page" id="page-food">
+      <div class="card" style="display:flex;align-items:center;gap:16px;">
+        <div class="ring-wrap">
+          <svg id="food-ring-svg" width="88" height="88" style="transform:rotate(-90deg)">
+            <circle cx="44" cy="44" r="36" fill="none" stroke="var(--surface3)" stroke-width="8"/>
+            <circle id="food-ring-fill" cx="44" cy="44" r="36" fill="none" stroke="var(--orange)" stroke-width="8"
+              stroke-dasharray="0 226" stroke-linecap="round" style="transition:stroke-dasharray .6s ease"/>
+          </svg>
+          <div class="ring-center" style="flex-direction:column">
+            <span id="food-kcal-big" style="font-family:var(--font-head);font-size:17px;font-weight:800;color:var(--orange)">0</span>
+            <span style="font-size:9px;color:var(--text3)">kcal</span>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px">本日の摂取カロリー</div>
+          <div style="font-size:12px;color:var(--text3)">目標: <span id="food-goal">2000</span> kcal</div>
+          <div style="font-size:12px;color:var(--text3)">残り: <span id="food-remain">2000</span> kcal</div>
+          <div id="food-status" style="font-size:11px;color:var(--green);margin-top:6px">良いペース</div>
+        </div>
+      </div>
+
+      <button class="btn btn-orange" onclick="openModal('food-modal')">＋ 食事を記録する</button>
+
+      <div class="card">
+        <div class="card-title">今日の食事</div>
+        <div id="food-list"><div style="color:var(--text4);font-size:13px;text-align:center;padding:16px 0">まだ記録がありません</div></div>
+        <div id="food-total" style="display:none;text-align:right;padding-top:10px;font-family:var(--font-head);font-size:16px">
+          合計 <span id="food-total-val" style="color:var(--orange)">0</span> kcal
+        </div>
+      </div>
+
+      <div class="card" style="font-size:12px;color:var(--text3)">
+        💡 筋肉づくりには体重×2gのタンパク質が目安です
+      </div>
+    </div>
+
+    <!-- ── WORKOUT ── -->
+    <div class="page" id="page-workout">
+      <div class="card" style="display:flex;align-items:center;gap:16px;">
+        <div class="ring-wrap">
+          <svg id="wk-ring-svg" width="76" height="76" style="transform:rotate(-90deg)">
+            <circle cx="38" cy="38" r="31" fill="none" stroke="var(--surface3)" stroke-width="7"/>
+            <circle id="wk-ring-fill" cx="38" cy="38" r="31" fill="none" stroke="var(--purple)" stroke-width="7"
+              stroke-dasharray="0 194.8" stroke-linecap="round" style="transition:stroke-dasharray .6s ease"/>
+          </svg>
+          <div class="ring-center">
+            <span id="wk-count" style="font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--purple)">0</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:600">今日の種目数</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">今週 <span id="wk-week-days">0</span>日 トレーニング</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">ボリューム <span id="wk-volume">0</span> kg</div>
+        </div>
+      </div>
+
+      <button class="btn btn-purple" onclick="openModal('workout-modal')">＋ 種目を追加する</button>
+
+      <div class="card">
+        <div class="card-title">今日のトレーニング</div>
+        <div id="wk-list"><div style="color:var(--text4);font-size:13px;text-align:center;padding:16px 0">まだ記録がありません</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">今週のトレーニング</div>
+        <div class="week-strip" id="wk-week-strip"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<!-- ══ MODALS ══ -->
+<div id="modal-overlay" onclick="handleOverlayClick(event)">
+
+  <!-- Weight Modal -->
+  <div class="modal-box" id="weight-modal" style="display:none">
+    <div class="modal-head">
+      <div class="modal-title">体重を記録</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="input-group">
+      <div class="input-label">今日の体重</div>
+      <div class="inp-wrap">
+        <input class="inp" type="number" id="weight-input" placeholder="70.5" step="0.1">
+        <span class="inp-unit">kg</span>
+      </div>
+    </div>
+    <button class="btn btn-green" onclick="saveWeight()">記録する</button>
+  </div>
+
+  <!-- Food Modal -->
+  <div class="modal-box" id="food-modal" style="display:none">
+    <div class="modal-head">
+      <div class="modal-title">食事を記録</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">プリセットから選ぶ</div>
+    <div class="input-group">
+      <input class="inp" type="text" id="food-search" placeholder="食品を検索..." oninput="filterPresets()">
+    </div>
+    <div class="preset-grid" id="preset-grid"></div>
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">手動で入力</div>
+      <div class="input-group">
+        <div class="input-label">食品名</div>
+        <input class="inp" type="text" id="food-name-input" placeholder="例: ざるそば">
+      </div>
+      <div class="input-group">
+        <div class="input-label">カロリー</div>
+        <div class="inp-wrap">
+          <input class="inp" type="number" id="food-kcal-input" placeholder="300">
+          <span class="inp-unit">kcal</span>
+        </div>
+      </div>
+      <button class="btn btn-orange" onclick="addFoodManual()">追加する</button>
+    </div>
+  </div>
+
+  <!-- Workout Modal -->
+  <div class="modal-box" id="workout-modal" style="display:none">
+    <div class="modal-head">
+      <div class="modal-title">種目を追加</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">筋肉部位</div>
+    <div class="chips" id="muscle-chips"></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">種目</div>
+    <div class="chips" id="exercise-chips"></div>
+    <div class="input-group">
+      <div class="input-label">種目名（直接入力も可）</div>
+      <input class="inp" type="text" id="wk-exercise-input" placeholder="例: ベンチプレス">
+    </div>
+    <div class="inp3">
+      <div class="input-group">
+        <div class="input-label">セット</div>
+        <div class="inp-wrap"><input class="inp" type="number" id="wk-sets" value="3"><span class="inp-unit">set</span></div>
+      </div>
+      <div class="input-group">
+        <div class="input-label">レップ</div>
+        <div class="inp-wrap"><input class="inp" type="number" id="wk-reps" value="10"><span class="inp-unit">rep</span></div>
+      </div>
+      <div class="input-group">
+        <div class="input-label">重量</div>
+        <div class="inp-wrap"><input class="inp" type="number" id="wk-weight" value="60"><span class="inp-unit">kg</span></div>
+      </div>
+    </div>
+    <button class="btn btn-purple" onclick="addWorkout()">追加する</button>
+  </div>
+
+</div>
+
+<!-- Install banner -->
+<div id="install-banner">
+  <div class="banner-text">📱 ホーム画面に追加してアプリとして使えます！<br><span id="install-instruction"></span></div>
+  <div class="banner-row">
+    <button id="install-btn" class="btn btn-green" style="flex:1;padding:10px;font-size:13px;display:none" onclick="installApp()">インストール</button>
+    <button class="banner-close" onclick="document.getElementById('install-banner').classList.remove('show')">✕</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════
+const KEY = 'fittrack_v3';
+let DB = {};
+try { DB = JSON.parse(localStorage.getItem(KEY)) || {}; } catch {}
+DB.weights = DB.weights || {};
+DB.foods = DB.foods || {};
+DB.workouts = DB.workouts || {};
+
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch {} }
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const CALORIE_GOAL = 2000;
+const DAY_JP = ['日','月','火','水','木','金','土'];
+
+const FOOD_PRESETS = [
+  {name:'白米(1杯)',kcal:252},{name:'食パン(1枚)',kcal:158},{name:'卵(1個)',kcal:76},
+  {name:'鶏むね肉(100g)',kcal:116},{name:'豚バラ(100g)',kcal:395},{name:'牛もも(100g)',kcal:182},
+  {name:'サバ缶(1缶)',kcal:190},{name:'豆腐(1丁)',kcal:147},{name:'牛乳(200ml)',kcal:122},
+  {name:'バナナ(1本)',kcal:86},{name:'プロテイン(1杯)',kcal:120},{name:'ラーメン(1杯)',kcal:500},
+  {name:'カレー(1皿)',kcal:600},{name:'ハンバーガー',kcal:450},{name:'サラダチキン',kcal:110},
+  {name:'おにぎり(1個)',kcal:180},{name:'コーヒー(ブラック)',kcal:5},{name:'オレンジジュース(200ml)',kcal:84},
+  {name:'ヨーグルト(100g)',kcal:60},{name:'アーモンド(20粒)',kcal:120},{name:'チョコレート(30g)',kcal:160},
+];
+
+const EXERCISE_PRESETS = {
+  '胸':['ベンチプレス','ダンベルフライ','プッシュアップ','インクラインプレス'],
+  '背中':['デッドリフト','懸垂','ラットプルダウン','ベントオーバーロウ'],
+  '肩':['ショルダープレス','サイドレイズ','フロントレイズ','アップライトロウ'],
+  '腕':['バーベルカール','トライセップスディップ','ハンマーカール','スカルクラッシャー'],
+  '脚':['スクワット','レッグプレス','ランジ','レッグカール'],
+  '腹筋':['クランチ','プランク','レッグレイズ','ロシアンツイスト'],
+};
+
+let selectedMuscle = '胸';
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+function last7Days() {
+  return Array.from({length:7},(_,i)=>{
+    const d=new Date(); d.setDate(d.getDate()-(6-i));
+    return d.toISOString().slice(0,10);
+  });
+}
+function fmt(n,d=1){ return Number(n).toFixed(d); }
+
+function drawSparkline(svgId, data, color, h=56) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  svg.innerHTML = '';
+  const W=280;
+  if (!data || data.length < 2) {
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x','50%'); t.setAttribute('y','50%');
+    t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
+    t.setAttribute('fill','#444'); t.setAttribute('font-size','11');
+    t.setAttribute('font-family','DM Sans, sans-serif');
+    t.textContent = 'データが少ないです'; svg.appendChild(t); return;
+  }
+  const vals = data.map(d=>d.v);
+  const mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||1;
+  const pts = data.map((d,i)=>{
+    const x=(i/(data.length-1))*W;
+    const y=h-((d.v-mn)/rng)*(h-8)-4;
+    return {x,y};
+  });
+  const polyPts = pts.map(p=>`${p.x},${p.y}`).join(' ');
+  const areaPts = polyPts+` ${W},${h} 0,${h}`;
+  const gradId = 'g'+svgId;
+  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+  defs.innerHTML = `<linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+    <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+  </linearGradient>`;
+  svg.appendChild(defs);
+  const area = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  area.setAttribute('points',areaPts); area.setAttribute('fill',`url(#${gradId})`);
+  svg.appendChild(area);
+  const line = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  line.setAttribute('points',polyPts); line.setAttribute('fill','none');
+  line.setAttribute('stroke',color); line.setAttribute('stroke-width','2');
+  line.setAttribute('stroke-linecap','round'); line.setAttribute('stroke-linejoin','round');
+  svg.appendChild(line);
+  pts.forEach(p=>{
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y); c.setAttribute('r','3'); c.setAttribute('fill',color);
+    svg.appendChild(c);
+  });
+}
+
+function setRing(fillId, pct, circ) {
+  const el = document.getElementById(fillId);
+  if (!el) return;
+  const dash = Math.min(pct/100,1)*circ;
+  el.setAttribute('stroke-dasharray',`${dash} ${circ}`);
+}
+
+function dayLabels(containerId, days) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = '';
+  days.forEach(d=>{
+    const s=document.createElement('span');
+    s.textContent=DAY_JP[new Date(d).getDay()];
+    c.appendChild(s);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPUTED
+// ═══════════════════════════════════════════════════════════
+function getTodayKcal() {
+  return ((DB.foods[todayStr()])||[]).reduce((s,f)=>s+f.kcal,0);
+}
+function getTodayWorkouts() { return DB.workouts[todayStr()] || []; }
+function getWeightArr() {
+  return Object.entries(DB.weights).sort(([a],[b])=>a.localeCompare(b)).map(([date,v])=>({date,v}));
+}
+function getWeekWorkoutDays() {
+  return last7Days().filter(d=>(DB.workouts[d]||[]).length>0).length;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════
+function renderAll() {
+  const today = todayStr();
+  const wa = getWeightArr();
+  const latestW = wa.length ? wa[wa.length-1].v : null;
+  const prevW = wa.length>1 ? wa[wa.length-2].v : null;
+  const todayKcal = getTodayKcal();
+  const todayW = getTodayWorkouts();
+  const weekWork = getWeekWorkoutDays();
+  const kcalPct = Math.min((todayKcal/CALORIE_GOAL)*100,100);
+  const days = last7Days();
+  const weekWeights = days.map(d=>({date:d,v:DB.weights[d]})).filter(d=>d.v!=null);
+  const weekKcals = days.map(d=>({date:d,v:(DB.foods[d]||[]).reduce((s,f)=>s+f.kcal,0)}));
+
+  // ── Header ──
+  document.getElementById('header-date').textContent =
+    new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  const streak = calcStreak();
+  document.getElementById('streak-badge').innerHTML = streak > 1 ? `🔥 ${streak}日連続` : '';
+
+  // ── Dashboard ──
+  const dw = document.getElementById('d-weight');
+  dw.textContent = latestW ? fmt(latestW) : '--';
+  const dwd = document.getElementById('d-weight-diff');
+  if (latestW && prevW) {
+    const diff = latestW - prevW;
+    dwd.textContent = (diff>0?'+':'')+fmt(diff)+'kg';
+    dwd.style.color = diff<0?'var(--green)':'var(--red)';
+  }
+  document.getElementById('d-kcal').textContent = todayKcal;
+  document.getElementById('d-week-work').textContent = weekWork;
+  document.getElementById('d-kcal2').textContent = todayKcal;
+  document.getElementById('d-goal').textContent = CALORIE_GOAL;
+  document.getElementById('d-prog').style.width = kcalPct+'%';
+  document.getElementById('d-prog').style.background = kcalPct>100?'var(--red)':kcalPct>85?'var(--yellow)':'var(--orange)';
+  setRing('ring-fill', kcalPct, 207.3);
+  document.getElementById('ring-pct').textContent = Math.round(kcalPct)+'%';
+  const msg = kcalPct>100?'⚠ 目標超過':kcalPct>85?'もうすぐ目標':'良いペース';
+  const msgColor = kcalPct>100?'var(--red)':kcalPct>85?'var(--yellow)':'var(--green)';
+  document.getElementById('d-kcal-msg').textContent = msg;
+  document.getElementById('d-kcal-msg').style.color = msgColor;
+  drawSparkline('weight-chart', weekWeights, '#4ade80');
+  drawSparkline('kcal-chart', weekKcals.filter(d=>d.v>0), '#fb923c');
+  dayLabels('weight-day-labels', days);
+  dayLabels('kcal-day-labels', days);
+
+  // Today summary
+  const summEl = document.getElementById('d-summary');
+  const summBody = document.getElementById('d-summary-body');
+  if (todayW.length || (DB.foods[today]||[]).length) {
+    summEl.style.display = 'block';
+    let html = '';
+    if (todayW.length) {
+      html += '<div style="font-size:11px;color:var(--purple);margin-bottom:6px">💪 筋トレ</div>';
+      todayW.forEach(w=>{
+        html += `<div style="font-size:13px;color:#ccc;margin-bottom:2px;display:flex;gap:8px">
+          <span style="color:var(--text3)">${w.muscle}</span>
+          <span>${w.exercise}</span>
+          <span style="color:var(--text3)">${w.sets}×${w.reps}rep ${w.weight}kg</span></div>`;
+      });
+    }
+    if ((DB.foods[today]||[]).length) {
+      html += '<div style="font-size:11px;color:var(--orange);margin:10px 0 6px">🍽 食事</div>';
+      (DB.foods[today]||[]).forEach(f=>{
+        html += `<div style="font-size:13px;color:#ccc;display:flex;justify-content:space-between;margin-bottom:2px">
+          <span>${f.name}</span><span style="color:var(--orange)">${f.kcal}kcal</span></div>`;
+      });
+    }
+    summBody.innerHTML = html;
+  } else { summEl.style.display = 'none'; }
+
+  // ── Weight page ──
+  document.getElementById('w-current').textContent = latestW ? fmt(latestW) : '--';
+  const wdiff = document.getElementById('w-diff');
+  if (latestW && prevW) {
+    const diff = latestW-prevW;
+    wdiff.textContent = '前回比 '+(diff>0?'+':'')+fmt(diff)+'kg';
+    wdiff.style.color = diff<0?'var(--green)':'var(--red)';
+  } else { wdiff.textContent=''; }
+  drawSparkline('weight-chart2', weekWeights, '#4ade80', 64);
+  dayLabels('weight-day-labels2', days);
+  const wh = document.getElementById('weight-history');
+  const sortedW = [...wa].reverse().slice(0,14);
+  if (!sortedW.length) {
+    wh.innerHTML = '<div style="color:var(--text4);font-size:13px;text-align:center;padding:20px 0">記録がありません</div>';
+  } else {
+    wh.innerHTML = sortedW.map(w=>`
+      <div class="list-row">
+        <div><div style="font-size:13px">${w.date}</div>
+          <div style="font-size:11px;color:var(--text3)">${DAY_JP[new Date(w.date).getDay()]}曜日</div></div>
+        <div style="font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--green)">
+          ${fmt(w.v)}<span style="font-size:12px;color:var(--text3)">kg</span></div>
+      </div>`).join('');
+  }
+
+  // ── Food page ──
+  setRing('food-ring-fill', kcalPct, 226.2);
+  document.getElementById('food-kcal-big').textContent = todayKcal;
+  document.getElementById('food-goal').textContent = CALORIE_GOAL;
+  document.getElementById('food-remain').textContent = Math.max(CALORIE_GOAL-todayKcal,0);
+  document.getElementById('food-status').textContent = msg;
+  document.getElementById('food-status').style.color = msgColor;
+  const fl = document.getElementById('food-list');
+  const ft = document.getElementById('food-total');
+  const todayFoods = DB.foods[today] || [];
+  if (!todayFoods.length) {
+    fl.innerHTML = '<div style="color:var(--text4);font-size:13px;text-align:center;padding:16px 0">まだ記録がありません</div>';
+    ft.style.display='none';
+  } else {
+    fl.innerHTML = todayFoods.map(f=>`
+      <div class="list-row">
+        <span style="font-size:14px">${f.name}</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:var(--font-head);font-size:16px;font-weight:800;color:var(--orange)">${f.kcal}<span style="font-size:11px;color:var(--text3)">kcal</span></span>
+          <button class="rm-btn" onclick="removeFood(${f.id})">✕</button>
+        </div>
+      </div>`).join('');
+    document.getElementById('food-total-val').textContent = todayKcal;
+    ft.style.display='block';
+  }
+
+  // ── Workout page ──
+  const vol = todayW.reduce((s,w)=>s+w.sets*w.reps*w.weight,0);
+  setRing('wk-ring-fill', Math.min((todayW.length/5)*100,100), 194.8);
+  document.getElementById('wk-count').textContent = todayW.length;
+  document.getElementById('wk-week-days').textContent = weekWork;
+  document.getElementById('wk-volume').textContent = vol.toLocaleString();
+  const wkl = document.getElementById('wk-list');
+  if (!todayW.length) {
+    wkl.innerHTML = '<div style="color:var(--text4);font-size:13px;text-align:center;padding:16px 0">まだ記録がありません</div>';
+  } else {
+    wkl.innerHTML = todayW.map(w=>`
+      <div class="wk-item">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span class="wk-tag">${w.muscle}</span>
+            <span style="font-size:14px;font-weight:600">${w.exercise}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text3)">${w.sets}セット × ${w.reps}rep @ ${w.weight}kg</div>
+          <div style="font-size:11px;color:var(--text4);margin-top:2px">ボリューム ${(w.sets*w.reps*w.weight).toLocaleString()}kg</div>
+        </div>
+        <button class="rm-btn" onclick="removeWorkout(${w.id})">✕</button>
+      </div>`).join('');
+  }
+  const strip = document.getElementById('wk-week-strip');
+  strip.innerHTML = days.map(d=>{
+    const hasW = (DB.workouts[d]||[]).length>0;
+    const isT = d===today;
+    return `<div class="week-day">
+      <div class="day-label">${DAY_JP[new Date(d).getDay()]}</div>
+      <div class="day-dot" style="background:${hasW?'var(--purple)':isT?'var(--surface3)':'var(--surface2)'};border:${isT?'1px solid var(--purple)':'1px solid transparent'}">
+        ${hasW?'✓':''}
+      </div></div>`;
+  }).join('');
+}
+
+function calcStreak() {
+  let streak=0, d=new Date();
+  while(true) {
+    const s=d.toISOString().slice(0,10);
+    if ((DB.workouts[s]||[]).length>0) { streak++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  return streak;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════════════
+function saveWeight() {
+  const v = parseFloat(document.getElementById('weight-input').value);
+  if (!v||isNaN(v)) return;
+  DB.weights[todayStr()] = v;
+  persist(); closeModal(); renderAll();
+}
+
+function addFoodManual() {
+  const name = document.getElementById('food-name-input').value.trim();
+  const kcal = parseInt(document.getElementById('food-kcal-input').value);
+  if (!name||!kcal||isNaN(kcal)) return;
+  addFoodEntry(name, kcal);
+}
+
+function addFoodEntry(name, kcal) {
+  const t = todayStr();
+  DB.foods[t] = DB.foods[t] || [];
+  DB.foods[t].push({id:Date.now(), name, kcal});
+  persist(); closeModal(); renderAll();
+}
+
+function removeFood(id) {
+  const t = todayStr();
+  DB.foods[t] = (DB.foods[t]||[]).filter(f=>f.id!==id);
+  persist(); renderAll();
+}
+
+function addWorkout() {
+  const exercise = document.getElementById('wk-exercise-input').value.trim();
+  if (!exercise) return;
+  const sets = parseInt(document.getElementById('wk-sets').value)||3;
+  const reps = parseInt(document.getElementById('wk-reps').value)||10;
+  const weight = parseFloat(document.getElementById('wk-weight').value)||0;
+  const t = todayStr();
+  DB.workouts[t] = DB.workouts[t] || [];
+  DB.workouts[t].push({id:Date.now(), muscle:selectedMuscle, exercise, sets, reps, weight});
+  persist(); closeModal(); renderAll();
+}
+
+function removeWorkout(id) {
+  const t = todayStr();
+  DB.workouts[t] = (DB.workouts[t]||[]).filter(w=>w.id!==id);
+  persist(); renderAll();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════════════
+let currentModal = null;
+function openModal(id) {
+  document.querySelectorAll('.modal-box').forEach(m=>m.style.display='none');
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.style.display='block';
+  document.getElementById('modal-overlay').classList.add('open');
+  currentModal = id;
+  if (id==='food-modal') { document.getElementById('food-search').value=''; filterPresets(); }
+  if (id==='workout-modal') { buildMuscleChips(); buildExerciseChips(); }
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.querySelectorAll('.modal-box').forEach(m=>m.style.display='none');
+  currentModal=null;
+}
+function handleOverlayClick(e) { if(e.target===document.getElementById('modal-overlay')) closeModal(); }
+
+// ═══════════════════════════════════════════════════════════
+// FOOD PRESETS
+// ═══════════════════════════════════════════════════════════
+function filterPresets() {
+  const q = document.getElementById('food-search').value.toLowerCase();
+  const grid = document.getElementById('preset-grid');
+  const filtered = FOOD_PRESETS.filter(f=>!q||f.name.toLowerCase().includes(q));
+  grid.innerHTML = filtered.map(f=>
+    `<button class="preset-btn" onclick="addFoodEntry('${f.name}',${f.kcal})">${f.name} <span>${f.kcal}kcal</span></button>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// WORKOUT CHIPS
+// ═══════════════════════════════════════════════════════════
+function buildMuscleChips() {
+  const c = document.getElementById('muscle-chips');
+  c.innerHTML = Object.keys(EXERCISE_PRESETS).map(m=>
+    `<button class="chip purple ${m===selectedMuscle?'on':''}" onclick="selectMuscle('${m}')">${m}</button>`
+  ).join('');
+}
+function selectMuscle(m) {
+  selectedMuscle=m;
+  buildMuscleChips(); buildExerciseChips();
+}
+function buildExerciseChips() {
+  const c = document.getElementById('exercise-chips');
+  const cur = document.getElementById('wk-exercise-input').value;
+  c.innerHTML = (EXERCISE_PRESETS[selectedMuscle]||[]).map(e=>
+    `<button class="chip purple ${e===cur?'on':''}" onclick="selectExercise('${e}')">${e}</button>`
+  ).join('');
+}
+function selectExercise(e) {
+  document.getElementById('wk-exercise-input').value=e;
+  buildExerciseChips();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('page-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// PWA INSTALL
+// ═══════════════════════════════════════════════════════════
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredPrompt=e;
+  const banner = document.getElementById('install-banner');
+  document.getElementById('install-btn').style.display='block';
+  document.getElementById('install-instruction').textContent='';
+  banner.classList.add('show');
+  setTimeout(()=>banner.classList.remove('show'), 10000);
+});
+
+function installApp() {
+  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt=null; }
+  document.getElementById('install-banner').classList.remove('show');
+}
+
+// iOS detection
+const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+if (isIOS && !isInStandalone) {
+  const banner = document.getElementById('install-banner');
+  document.getElementById('install-instruction').textContent = 'Safariで「共有」→「ホーム画面に追加」をタップ';
+  banner.classList.add('show');
+  setTimeout(()=>banner.classList.remove('show'), 8000);
+}
+
+// Service Worker for offline
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    const CACHE='fittrack-v1';
+    self.addEventListener('install',e=>e.waitUntil(
+      caches.open(CACHE).then(c=>c.addAll(['/']))
+    ));
+    self.addEventListener('fetch',e=>e.respondWith(
+      caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match('/')))
+    ));
+  `;
+  const blob = new Blob([swCode],{type:'application/javascript'});
+  const url = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url).catch(()=>{});
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+filterPresets();
+renderAll();
+</script>
+</body>
+</html>
